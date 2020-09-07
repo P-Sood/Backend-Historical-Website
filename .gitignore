@@ -1,5 +1,7 @@
 *.txt
 *.csv
-*config.py
-.venv/
-.vscode/
+backend_config.py
+settings.json
+.venv
+.vscode
+
