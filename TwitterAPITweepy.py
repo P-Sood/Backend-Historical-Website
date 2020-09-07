@@ -60,7 +60,7 @@ class TwitterAPITweepy(cleanTweets,DataBase):
             query.append(searchParameters[i].lower())
 
         # If you want to add another field to the csv file, follow code below and then put it in fieldnames as well 
-
+            
         for tweet in tweepy.Cursor(self.api.search,q=searchParameters,count= count,lang="en",since = since, until = until ,tweet_mode="extended",).items():
             user =  tweet.user
             # Making sure there is no link and then adding keys to my dictionary with specific values to be written to csv            
@@ -165,7 +165,7 @@ class TwitterAPITweepy(cleanTweets,DataBase):
                     except:
                         parsed_tweet['media'] = ""
 
-            self.database.insert_one(parsed_tweet)
+            #self.database.insert_one(parsed_tweet)
             writer.writerow(parsed_tweet)
         return tweets 
 
@@ -186,7 +186,7 @@ def main():
 
 
     api = TwitterAPITweepy(consumer_key,consumer_secret,access_token,access_token_secret,mongoDB)
-    api.get_tweets_tweepy(csvFileName = "tweets_1" + search + ".csv" , searchParameters = [search],count=2)
+    api.get_tweets_tweepy(csvFileName = "tweets_" + search + ".csv" , searchParameters = [search],count=2)
 
     #wordFreq = wordFrequency()
     #wordFreq.getWordFreq_toText(textFileName = "WordCount" + search + ".txt" , csvFileName = "tweets_1" + search + ".csv", collectionWords = ["portland"])
