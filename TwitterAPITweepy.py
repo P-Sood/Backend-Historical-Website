@@ -8,6 +8,7 @@ from datetime import date
 
 from database import DataBase
 from cleanTweets import cleanTweets
+from Looper import Looper
 
 from wordFrequency import wordFrequency
 import backend_config as config
@@ -20,7 +21,7 @@ from urllib.parse import urlparse
 # Tweepy uses dot method and Twurl uses indexing 
 
     
-class TwitterAPITweepy(cleanTweets,DataBase):
+class TwitterAPITweepy(cleanTweets,DataBase,Looper):
     
     def __init__(self,consumer_key,consumer_secret,access_token,access_token_secret,database):
         self.consumer_key = consumer_key
@@ -28,6 +29,8 @@ class TwitterAPITweepy(cleanTweets,DataBase):
         self.access_token = access_token
         self.access_token_secret = access_token_secret
         self.database = database
+        self.count = 0
+        Looper(self.count)
 
 
     def Auth(self):
@@ -63,7 +66,6 @@ class TwitterAPITweepy(cleanTweets,DataBase):
             
         for tweet in tweepy.Cursor(self.api.search,q=searchParameters,count= count,lang="en",since = since, until = until ,tweet_mode="extended",).items():
             user =  tweet.user
-            # Making sure there is no link and then adding keys to my dictionary with specific values to be written to csv            
             parsed_tweet = {
                 '_id':  tweet.id_str,
                 'user_id':  user.screen_name,
@@ -167,6 +169,7 @@ class TwitterAPITweepy(cleanTweets,DataBase):
 
             #self.database.insert_one(parsed_tweet)
             writer.writerow(parsed_tweet)
+            Looper.incCount(self.count)
         return tweets 
 
     
@@ -191,8 +194,8 @@ def main():
     #wordFreq = wordFrequency()
     #wordFreq.getWordFreq_toText(textFileName = "WordCount" + search + ".txt" , csvFileName = "tweets_1" + search + ".csv", collectionWords = ["portland"])
 
-if __name__ == "__main__":
-    main()
+#if __name__ == "__main__":
+    #main()
 
 
 

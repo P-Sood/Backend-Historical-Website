@@ -5,6 +5,8 @@ import os
 from datetime import date
 import json
 
+import sys
+
 
 
 from database import DataBase
@@ -63,18 +65,18 @@ class TwitterAPITweepy(cleanTweets,DataBase):
         #for tweet in tweepy.Cursor(self.api.search_full_archive,environment_name = "fullArchive",query = searchParameters_1,fromDate = since.replace("-","") + "1201", toDate = until.replace("-","") + "1159"  ).items(10):
         #    print(tweet)
 
-        for  tweet in tweepy.Cursor(self.api.search_full_archive,environment_name = "fullArchive",query = searchParameters,fromDate = since.replace("-","") + "1201", toDate = until.replace("-","") + "1159"  ).items(10):
+        for  tweet in tweepy.Cursor(self.api.search_full_archive,environment_name = "fullArchiveSearch",query = searchParameters,fromDate = since.replace("-","") + "1201", toDate = until.replace("-","") + "1159", maxResults = 100  ).items(100):
             user =  tweet.user
+            imgTag = ""
             # Making sure there is no link and then adding keys to my dictionary with specific values to be written to csv            
             parsed_tweet = {
                 '_id':  tweet.id_str,
                 'user_id':  user.screen_name,
-                'is_retweet': "False",
-                'is_thread': "False",
                 'date': str(tweet.created_at),
                 'related_hashtags': [],
                 'external_links': [],
                 'search_term': searchParameters,
+                'media' : "",
                 }
 
                 # parsed_tweet['text'] = super().remove_emoji(super().clean_tweet(tweet['extended_tweet']['full_text'])
@@ -100,20 +102,17 @@ class TwitterAPITweepy(cleanTweets,DataBase):
             # With 240 max characters, this loop is O(120) // 120 number symbol characters and 120 alphanumeric characters that are the hashtag
             # In actuality max is like 10, but not every tweet has it
             try:
-                print(tweet.retweeted_status.entities['hashtags'], "NUMBER 1")
-                for hashtag in tweet.retweeted_status.entities['hashtags']:
+                for hashtag in tweet.retweeted_status.extended_tweet['entities']['hashtags']:
                     related_hashtags = "#" + hashtag['text']
                     if (related_hashtags.lower() not in query):
                         parsed_tweet['related_hashtags'].append(related_hashtags)
             except:
                 try:
-                    print(tweet.extended_tweet['entities']['hashtags'], "NUMBER 2")
                     for hashtag in tweet.extended_tweet['entities']['hashtags']:
                         related_hashtags = "#" + hashtag['text']
                         if (related_hashtags.lower() not in query):
                             parsed_tweet['related_hashtags'].append(related_hashtags)
                 except:
-                    print(tweet.entities['hashtags'], "NUMBER 3")
                     for hashtag in tweet.entities['hashtags']:
                         related_hashtags = "#" + hashtag['text']
                         if (related_hashtags.lower() not in query):
@@ -145,44 +144,47 @@ class TwitterAPITweepy(cleanTweets,DataBase):
                 parsed_tweet['retweets'] =  str(tweet.retweet_count) 
 
                 parsed_tweet['is_retweet'] = "False"
+
+         
             
-
-            # this code is very slow so we can revert it back but this works 100% where it was more 80% but MUCH faster 
             try:
-                listAddedLinks = super().getExternalLinks(tweet.retweeted_status.extended_tweet['full_text'])
-                for i in range(len(listAddedLinks)):
-                    # I get the t.co url and I unshorten it to check if it actually redirects us back to twitter
-                    # Then i just put that into my list
-                    url = super().unshorten_url(listAddedLinks[i])
-                    x = urlparse(url)
-                    if (x.netloc != "twitter.com"):
-                        parsed_tweet['external_links'].append(super().remove_emoji(url.replace('\n',"")))
-            except:   
-                try:
-                    listAddedLinks = super().getExternalLinks(tweet.extended_tweet['full_text'])
-                    for i in range(len(listAddedLinks)):
-                        parsed_tweet['external_links'].append(super().remove_emoji(listAddedLinks[i].replace('\n',"")))
-                except:
-                    listAddedLinks = super().getExternalLinks(tweet.text)
-                    for i in range(len(listAddedLinks)):
-                        parsed_tweet['external_links'].append(super().remove_emoji(listAddedLinks[i].replace('\n',"")))
-
-
-            # Next block of code checks to see if tweet has a video, print link. If not check if tweet has multiple images, print img links, 
-            # if not then check if just 1 media image, print img, if nothing then print empty
-
-
-            # Something is wrong with this code, even though it was working a while back, So i need to find what underlying issue causes
-            # it to not work right now
-            try:
-                # For videos
-                parsed_tweet['media'] = tweet.extended_entities["media"][0]["video_info"]["variants"][0]["url"]
+                for link in tweet.retweeted_status.extended_tweet['entities']['urls']:
+                    if "twitter.com" not in link['display_url']:
+                        parsed_tweet['external_links'].append(link['expanded_url'])
             except:
                 try:
-                    # For multiple pictures
-                    for image in tweet.extended_entities["media"]:
-                        imgTag += image["media_url_https"]+ " "
-                    parsed_tweet['media'] = imgTag 
+                    for link in tweet.retweeted_status.entities['urls']:
+                        if "twitter.com" not in link['display_url']:
+                            parsed_tweet['external_links'].append(link['expanded_url'])
+                except:
+                    try:
+                        for link in tweet.extended_tweet['entities']['urls']:
+                            if "twitter.com" not in link['display_url']:
+                                parsed_tweet['external_links'].append(link['expanded_url'])
+                    except:
+                        for link in tweet.entities['urls']:
+                            if "twitter.com" not in link['display_url']:
+                                parsed_tweet['external_links'].append(link['expanded_url'])
+    
+            try:
+                # For retweet of video/multiple images
+                media_retweet = tweet.retweeted_status.extended_tweet['entities']['media']
+                if media_retweet[0]['type'] == "video":
+                    parsed_tweet['media'] = media_retweet[0]['media_url']
+                else:
+                    for image in media_retweet:
+                        imgTag += " " + image['media_url']
+                    parsed_tweet['media'] = imgTag
+            except:
+                try:
+                    # For tweet of video/multiple images
+                    media_tweet = tweet.extended_tweet['entities']['media']
+                    if media_tweet[0]['type'] == "video":
+                        parsed_tweet['media'] =  media_tweet[0]['media_url']
+                    else:
+                        for image in media_tweet:
+                            imgTag += image['media_url']
+                        parsed_tweet['media'] = imgTag
                 except:
                     try:
                         # For one picture
@@ -190,9 +192,9 @@ class TwitterAPITweepy(cleanTweets,DataBase):
                     except:
                         parsed_tweet['media'] = ""
 
-            #self.database.insert_one(parsed_tweet)
+            # #self.database.insert_one(parsed_tweet)
             writer.writerow(parsed_tweet)
-            #print(tweet)
+            # #print(tweet)
           
 
 def main():
@@ -210,7 +212,7 @@ def main():
 
 
     api = TwitterAPITweepy(consumer_key,consumer_secret,access_token,access_token_secret,mongoDB)
-    api.HIST(csvFileName= "yo.txt",searchParameters="#Cats", since = "2020-01-01", until = "2020-01-04")
+    api.HIST(csvFileName= "TrumpCSV_4.csv",searchParameters="#Trump", since = "2017-09-02", until = "2017-09-06")
 
     #wordFreq = wordFrequency()
     #wordFreq.getWordFreq_toText(textFileName = "WordCount" + search + ".txt" , csvFileName = "tweets_1" + search + ".csv", collectionWords = ["portland"])
