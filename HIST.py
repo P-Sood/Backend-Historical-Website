@@ -49,7 +49,7 @@ class TwitterAPITweepy(cleanTweets,DataBase):
     def HIST(self,csvFileName, searchParameters , since = "2020-01-01" , until = str(date.today()), count = 5):
 
         self.Auth()
-
+        
         lenSearch = len(searchParameters)
     
         csvFile = open(csvFileName, 'w',encoding="utf-8",newline="")
@@ -145,8 +145,6 @@ class TwitterAPITweepy(cleanTweets,DataBase):
 
                 parsed_tweet['is_retweet'] = "False"
 
-         
-            
             try:
                 for link in tweet.retweeted_status.extended_tweet['entities']['urls']:
                     if "twitter.com" not in link['display_url']:
@@ -210,9 +208,11 @@ def main():
 
     mongoDB = DataBase(UserName,Password,database,collection)
 
+    # When searching for multiple hashtags we can do 'OR' using "#THIS OR #THAT"
+    # When searching for multiple hashtags we can do 'AND' using "#This #That"
 
     api = TwitterAPITweepy(consumer_key,consumer_secret,access_token,access_token_secret,mongoDB)
-    api.HIST(csvFileName= "TrumpCSV_4.csv",searchParameters="#Trump", since = "2017-09-02", until = "2017-09-06")
+    api.HIST(csvFileName= "TrumpCSV_5.csv",searchParameters="#Trump OR #Cat", since = "2017-09-02", until = "2017-09-06")
 
     #wordFreq = wordFrequency()
     #wordFreq.getWordFreq_toText(textFileName = "WordCount" + search + ".txt" , csvFileName = "tweets_1" + search + ".csv", collectionWords = ["portland"])

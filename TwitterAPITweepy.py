@@ -4,7 +4,8 @@ import csv
 import os
 from datetime import date
 
-
+import sys
+import json
 
 from database import DataBase
 from cleanTweets import cleanTweets
@@ -58,6 +59,9 @@ class TwitterAPITweepy(cleanTweets,DataBase,Looper):
         writer = csv.DictWriter(csvFile,fieldnames=fieldnames) 
         writer.writeheader()
 
+
+        sys.stdout = open("jsonFromTweepy_Search.txt", "w")
+
         query = []
         for i in range(lenSearch):
             query.append(searchParameters[i].lower())
@@ -77,8 +81,8 @@ class TwitterAPITweepy(cleanTweets,DataBase,Looper):
                 'external_links': [],
                 'search_term': searchParameters,
                 }
-
-
+            
+            print(json.dumps(tweet._json))
             if hasattr(tweet, "retweeted_status"):  # Check if Retweet
                 try:
                     parsed_tweet['text'] = super().clean_tweet(super().remove_emoji(tweet.retweeted_status.extended_tweet["full_text"])).strip()
@@ -167,9 +171,10 @@ class TwitterAPITweepy(cleanTweets,DataBase,Looper):
                     except:
                         parsed_tweet['media'] = ""
 
-            #self.database.insert_one(parsed_tweet)
+            self.database.insert_one(tweet._json)
             writer.writerow(parsed_tweet)
-            Looper.incCount(self.count)
+
+        sys.stdout.close()
         return tweets 
 
     
@@ -178,7 +183,7 @@ def main():
     consumer_secret = config.Twitter['Consumer_Secret']
     access_token = config.Twitter['Access_Token']
     access_token_secret = config.Twitter['Access_Secret']
-    search = "#Portland"
+    search = "#Trump"
 
     UserName = config.MongoDB['UserName']
     Password = config.MongoDB['Password']
@@ -191,11 +196,13 @@ def main():
     api = TwitterAPITweepy(consumer_key,consumer_secret,access_token,access_token_secret,mongoDB)
     api.get_tweets_tweepy(csvFileName = "tweets_" + search + ".csv" , searchParameters = [search],count=2)
 
+
+
     #wordFreq = wordFrequency()
     #wordFreq.getWordFreq_toText(textFileName = "WordCount" + search + ".txt" , csvFileName = "tweets_1" + search + ".csv", collectionWords = ["portland"])
 
-#if __name__ == "__main__":
-    #main()
+if __name__ == "__main__":
+    main()
 
 
 
